@@ -1,14 +1,13 @@
 import consola from "consola"
 import fs from "node:fs/promises"
 
-import { PATHS } from "~/lib/paths"
-import { getCopilotToken } from "~/services/github/get-copilot-token"
-import { getDeviceCode } from "~/services/github/get-device-code"
-import { getGitHubUser } from "~/services/github/get-user"
-import { pollAccessToken } from "~/services/github/poll-access-token"
-
-import { HTTPError } from "./error"
-import { state } from "./state"
+import { getCopilotToken } from "../services/github/get-copilot-token.js"
+import { getDeviceCode } from "../services/github/get-device-code.js"
+import { getGitHubUser } from "../services/github/get-user.js"
+import { pollAccessToken } from "../services/github/poll-access-token.js"
+import { HTTPError } from "./error.js"
+import { PATHS } from "./paths.js"
+import { state } from "./state.js"
 
 const readGithubToken = () => fs.readFile(PATHS.GITHUB_TOKEN_PATH, "utf8")
 

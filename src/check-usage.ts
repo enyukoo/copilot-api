@@ -1,12 +1,12 @@
 import { defineCommand } from "citty"
 import consola from "consola"
 
-import { ensurePaths } from "./lib/paths"
-import { setupGitHubToken } from "./lib/token"
+import { ensurePaths } from "./lib/paths.js"
+import { setupGitHubToken } from "./lib/token.js"
 import {
   getCopilotUsage,
   type QuotaDetail,
-} from "./services/github/get-copilot-usage"
+} from "./services/github/get-copilot-usage.js"
 
 export const checkUsage = defineCommand({
   meta: {

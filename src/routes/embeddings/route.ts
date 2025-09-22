@@ -1,10 +1,10 @@
 import { Hono } from "hono"
 
-import { forwardError } from "~/lib/error"
+import { forwardError } from "../../lib/error.js"
 import {
   createEmbeddings,
   type EmbeddingRequest,
-} from "~/services/copilot/create-embeddings"
+} from "../../services/copilot/create-embeddings.js"
 
 export const embeddingRoutes = new Hono()
 

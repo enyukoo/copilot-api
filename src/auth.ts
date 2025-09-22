@@ -3,9 +3,9 @@
 import { defineCommand } from "citty"
 import consola from "consola"
 
-import { PATHS, ensurePaths } from "./lib/paths"
-import { state } from "./lib/state"
-import { setupGitHubToken } from "./lib/token"
+import { PATHS, ensurePaths } from "./lib/paths.js"
+import { state } from "./lib/state.js"
+import { setupGitHubToken } from "./lib/token.js"
 
 interface RunAuthOptions {
   verbose: boolean

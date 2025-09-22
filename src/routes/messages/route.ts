@@ -1,8 +1,7 @@
 import { Hono } from "hono"
 
-import { forwardError } from "~/lib/error"
-
-import { handleCompletion } from "./handler"
+import { forwardError } from "../../lib/error.js"
+import { handleCompletion } from "./handler.js"
 
 export const messageRoutes = new Hono()
 

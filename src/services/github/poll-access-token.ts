@@ -1,13 +1,13 @@
 import consola from "consola"
 
+import type { DeviceCodeResponse } from "./get-device-code.js"
+
 import {
   GITHUB_BASE_URL,
   GITHUB_CLIENT_ID,
   standardHeaders,
-} from "~/lib/api-config"
-import { sleep } from "~/lib/utils"
-
-import type { DeviceCodeResponse } from "./get-device-code"
+} from "../../lib/api-config.js"
+import { sleep } from "../../lib/utils.js"
 
 export async function pollAccessToken(
   deviceCode: DeviceCodeResponse,

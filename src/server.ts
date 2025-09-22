@@ -2,12 +2,12 @@ import { Hono } from "hono"
 import { cors } from "hono/cors"
 import { logger } from "hono/logger"
 
-import { completionRoutes } from "./routes/chat-completions/route"
-import { embeddingRoutes } from "./routes/embeddings/route"
-import { messageRoutes } from "./routes/messages/route"
-import { modelRoutes } from "./routes/models/route"
-import { tokenRoute } from "./routes/token/route"
-import { usageRoute } from "./routes/usage/route"
+import { completionRoutes } from "./routes/chat-completions/route.js"
+import { embeddingRoutes } from "./routes/embeddings/route.js"
+import { messageRoutes } from "./routes/messages/route.js"
+import { modelRoutes } from "./routes/models/route.js"
+import { tokenRoute } from "./routes/token/route.js"
+import { usageRoute } from "./routes/usage/route.js"
 
 export const server = new Hono()
 

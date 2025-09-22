@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 
-import { state } from "~/lib/state"
+import { state } from "../../lib/state.js"
 
 export const tokenRoute = new Hono()
 

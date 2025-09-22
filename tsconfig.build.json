@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "outDir": "dist",
+    "declaration": false,
+    "module": "NodeNext", // Node.js config only
+    "target": "ES2022",
+    "sourceMap": true
+  },
+  "include": ["src"]
+}

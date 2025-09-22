@@ -1,13 +1,11 @@
 import consola from "consola"
 
-import type { State } from "./state"
+import type { State } from "./state.js"
 
-import { HTTPError } from "./error"
-import { sleep } from "./utils"
+import { HTTPError } from "./error.js"
+import { sleep } from "./utils.js"
 
 export async function checkRateLimit(state: State) {
-  if (state.rateLimitSeconds === undefined) return
-
   const now = Date.now()
 
   if (!state.lastRequestTimestamp) {
@@ -17,12 +15,17 @@ export async function checkRateLimit(state: State) {
 
   const elapsedSeconds = (now - state.lastRequestTimestamp) / 1000
 
-  if (elapsedSeconds > state.rateLimitSeconds) {
+  if (
+    (state.rateLimitSeconds ?? 0) > 0
+    && elapsedSeconds > (state.rateLimitSeconds ?? 0)
+  ) {
     state.lastRequestTimestamp = now
     return
   }
 
-  const waitTimeSeconds = Math.ceil(state.rateLimitSeconds - elapsedSeconds)
+  const waitTimeSeconds = Math.ceil(
+    (state.rateLimitSeconds ?? 0) - elapsedSeconds,
+  )
 
   if (!state.rateLimitWait) {
     consola.warn(

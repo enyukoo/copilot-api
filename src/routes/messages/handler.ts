@@ -3,24 +3,24 @@ import type { Context } from "hono"
 import consola from "consola"
 import { streamSSE } from "hono/streaming"
 
-import { awaitApproval } from "~/lib/approval"
-import { checkRateLimit } from "~/lib/rate-limit"
-import { state } from "~/lib/state"
-import {
-  createChatCompletions,
-  type ChatCompletionChunk,
-  type ChatCompletionResponse,
-} from "~/services/copilot/create-chat-completions"
+import type {
+  ChatCompletionChunk,
+  ChatCompletionResponse,
+} from "../../services/copilot/create-chat-completions.js"
+import type {
+  AnthropicMessagesPayload,
+  AnthropicStreamState,
+} from "./anthropic-types.js"
 
-import {
-  type AnthropicMessagesPayload,
-  type AnthropicStreamState,
-} from "./anthropic-types"
+import { awaitApproval } from "../../lib/approval.js"
+import { checkRateLimit } from "../../lib/rate-limit.js"
+import { state } from "../../lib/state.js"
+import { createChatCompletions } from "../../services/copilot/create-chat-completions.js"
 import {
   translateToAnthropic,
   translateToOpenAI,
-} from "./non-stream-translation"
-import { translateChunkToAnthropicEvents } from "./stream-translation"
+} from "./non-stream-translation.js"
+import { translateChunkToAnthropicEvents } from "./stream-translation.js"
 
 export async function handleCompletion(c: Context) {
   await checkRateLimit(state)

@@ -5,7 +5,7 @@ import consola from "consola"
 import fs from "node:fs/promises"
 import os from "node:os"
 
-import { PATHS } from "./lib/paths"
+import { PATHS } from "./lib/paths.js"
 
 interface DebugInfo {
   version: string
@@ -41,11 +41,11 @@ async function getPackageVersion(): Promise<string> {
 }
 
 function getRuntimeInfo() {
-  const isBun = typeof Bun !== "undefined"
+  // Node.js runtime only
 
   return {
-    name: isBun ? "bun" : "node",
-    version: isBun ? Bun.version : process.version.slice(1),
+    name: "node",
+    version: process.version.slice(1),
     platform: os.platform(),
     arch: os.arch(),
   }

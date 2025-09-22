@@ -1,17 +1,17 @@
-FROM oven/bun:1.2.19-alpine AS builder
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-COPY ./package.json ./bun.lock ./
-RUN bun install --frozen-lockfile
+COPY ./package.json ./
+RUN npm install --omit=dev
 
 COPY . .
-RUN bun run build
+RUN npm run build
 
-FROM oven/bun:1.2.19-alpine AS runner
+FROM node:20-alpine AS runner
 WORKDIR /app
 
-COPY ./package.json ./bun.lock ./
-RUN bun install --frozen-lockfile --production --ignore-scripts --no-cache
+COPY ./package.json ./
+RUN npm install --omit=dev --production
 
 COPY --from=builder /app/dist ./dist
 
@@ -23,5 +23,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
 ARG GH_TOKEN
 ENV GH_TOKEN=$GH_TOKEN
 
-ENTRYPOINT ["bun", "run", "dist/main.js"]
+ENTRYPOINT ["node", "dist/main.js"]
 CMD ["start", "-g", "$GH_TOKEN"]
