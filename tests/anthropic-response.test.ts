@@ -1,4 +1,5 @@
-import { describe, test, assert } from "vitest"
+import assert from "node:assert"
+import { describe, test } from "node:test"
 import { z } from "zod"
 
 import type {
@@ -68,9 +69,8 @@ const anthropicStreamEventSchema = z
 function isValidAnthropicStreamEvent(payload: unknown): boolean {
   return anthropicStreamEventSchema.safeParse(payload).success
 }
-
-describe("OpenAI to Anthropic Non-Streaming Response Translation", () => {
-  test("should translate a simple text response correctly", () => {
+void describe("OpenAI to Anthropic Non-Streaming Response Translation", () => {
+  void test("should translate a simple text response correctly", () => {
     const openAIResponse: ChatCompletionResponse = {
       id: "chatcmpl-123",
       object: "chat.completion",
@@ -102,17 +102,14 @@ describe("OpenAI to Anthropic Non-Streaming Response Translation", () => {
     assert.strictEqual(anthropicResponse.stop_reason, "end_turn")
     assert.strictEqual(anthropicResponse.usage.input_tokens, 9)
     assert.strictEqual(anthropicResponse.content[0].type, "text")
-    if (anthropicResponse.content[0].type === "text") {
-      assert.strictEqual(
-        anthropicResponse.content[0].text,
-        "Hello! How can I help you today?",
-      )
-    } else {
-      throw new Error("Expected text block")
+    // Type assertion is safe since we just checked the type
+    const textContent = anthropicResponse.content[0] as {
+      type: "text"
+      text: string
     }
+    assert.strictEqual(textContent.text, "Hello! How can I help you today?")
   })
-
-  test("should translate a response with tool calls", () => {
+  void test("should translate a response with tool calls", () => {
     const openAIResponse: ChatCompletionResponse = {
       id: "chatcmpl-456",
       object: "chat.completion",
@@ -152,21 +149,20 @@ describe("OpenAI to Anthropic Non-Streaming Response Translation", () => {
 
     assert.strictEqual(anthropicResponse.stop_reason, "tool_use")
     assert.strictEqual(anthropicResponse.content[0].type, "tool_use")
-    if (anthropicResponse.content[0].type === "tool_use") {
-      assert.strictEqual(anthropicResponse.content[0].id, "call_abc")
-      assert.strictEqual(
-        anthropicResponse.content[0].name,
-        "get_current_weather",
-      )
-      assert.deepStrictEqual(anthropicResponse.content[0].input, {
-        location: "Boston, MA",
-      })
-    } else {
-      throw new Error("Expected tool_use block")
+    // Type assertion is safe since we just checked the type
+    const toolContent = anthropicResponse.content[0] as {
+      type: "tool_use"
+      id: string
+      name: string
+      input: Record<string, unknown>
     }
+    assert.strictEqual(toolContent.id, "call_abc")
+    assert.strictEqual(toolContent.name, "get_current_weather")
+    assert.deepStrictEqual(toolContent.input, {
+      location: "Boston, MA",
+    })
   })
-
-  test("should translate a response stopped due to length", () => {
+  void test("should translate a response stopped due to length", () => {
     const openAIResponse: ChatCompletionResponse = {
       id: "chatcmpl-789",
       object: "chat.completion",
@@ -196,9 +192,8 @@ describe("OpenAI to Anthropic Non-Streaming Response Translation", () => {
     assert.strictEqual(anthropicResponse.stop_reason, "max_tokens")
   })
 })
-
-describe("OpenAI to Anthropic Streaming Response Translation", () => {
-  test("should translate a simple text stream correctly", () => {
+void describe("OpenAI to Anthropic Streaming Response Translation", () => {
+  void test("should translate a simple text stream correctly", () => {
     const openAIStream: Array<ChatCompletionChunk> = [
       {
         id: "cmpl-1",
@@ -267,8 +262,7 @@ describe("OpenAI to Anthropic Streaming Response Translation", () => {
       assert.strictEqual(isValidAnthropicStreamEvent(event), true)
     }
   })
-
-  test("should translate a stream with tool calls", () => {
+  void test("should translate a stream with tool calls", () => {
     const openAIStream: Array<ChatCompletionChunk> = [
       {
         id: "cmpl-2",
