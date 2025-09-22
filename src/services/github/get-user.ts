@@ -1,6 +1,6 @@
-import { GITHUB_API_BASE_URL, standardHeaders } from "~/lib/api-config"
-import { HTTPError } from "~/lib/error"
-import { state } from "~/lib/state"
+import { GITHUB_API_BASE_URL, standardHeaders } from "../../lib/api-config.js"
+import { HTTPError } from "../../lib/error.js"
+import { state } from "../../lib/state.js"
 
 export async function getGitHubUser() {
   const response = await fetch(`${GITHUB_API_BASE_URL}/user`, {

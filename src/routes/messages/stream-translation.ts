@@ -1,10 +1,9 @@
-import { type ChatCompletionChunk } from "~/services/copilot/create-chat-completions"
-
+import { type ChatCompletionChunk } from "../../services/copilot/create-chat-completions.js"
 import {
   type AnthropicStreamEventData,
   type AnthropicStreamState,
-} from "./anthropic-types"
-import { mapOpenAIStopReasonToAnthropic } from "./utils"
+} from "./anthropic-types.js"
+import { mapOpenAIStopReasonToAnthropic } from "./utils.js"
 
 function isToolBlockOpen(state: AnthropicStreamState): boolean {
   if (!state.contentBlockOpen) {

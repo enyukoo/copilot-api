@@ -1,9 +1,8 @@
 import consola from "consola"
 
-import { getModels } from "~/services/copilot/get-models"
-import { getVSCodeVersion } from "~/services/get-vscode-version"
-
-import { state } from "./state"
+import { getModels } from "../services/copilot/get-models.js"
+import { getVSCodeVersion } from "../services/get-vscode-version.js"
+import { state } from "./state.js"
 
 export const sleep = (ms: number) =>
   new Promise((resolve) => {

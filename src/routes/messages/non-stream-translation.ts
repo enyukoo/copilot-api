@@ -6,8 +6,7 @@ import {
   type TextPart,
   type Tool,
   type ToolCall,
-} from "~/services/copilot/create-chat-completions"
-
+} from "../../services/copilot/create-chat-completions.js"
 import {
   type AnthropicAssistantContentBlock,
   type AnthropicAssistantMessage,
@@ -21,8 +20,8 @@ import {
   type AnthropicToolUseBlock,
   type AnthropicUserContentBlock,
   type AnthropicUserMessage,
-} from "./anthropic-types"
-import { mapOpenAIStopReasonToAnthropic } from "./utils"
+} from "./anthropic-types.js"
+import { mapOpenAIStopReasonToAnthropic } from "./utils.js"
 
 // Payload translation
 

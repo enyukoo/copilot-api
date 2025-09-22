@@ -1,9 +1,11 @@
-import { describe, test, expect } from "bun:test"
+import assert from "node:assert/strict"
+import { describe, test } from "node:test"
 import { z } from "zod"
 
-import type { AnthropicMessagesPayload } from "~/routes/messages/anthropic-types"
+import type { AnthropicMessagesPayload } from "../src/routes/messages/anthropic-types.js"
 
-import { translateToOpenAI } from "../src/routes/messages/non-stream-translation"
+import { translateToOpenAI } from "../src/routes/messages/non-stream-translation.js"
+import type { Message } from "../src/services/copilot/create-chat-completions.js"
 
 // Zod schema for a single message in the chat completion request.
 const messageSchema = z.object({
@@ -69,9 +71,8 @@ describe("Anthropic to OpenAI translation logic", () => {
       messages: [{ role: "user", content: "Hello!" }],
       max_tokens: 0,
     }
-
     const openAIPayload = translateToOpenAI(anthropicPayload)
-    expect(isValidChatCompletionRequest(openAIPayload)).toBe(true)
+    assert.deepStrictEqual(isValidChatCompletionRequest(openAIPayload), true)
   })
 
   test("should translate comprehensive Anthropic payload to valid OpenAI payload", () => {
@@ -100,7 +101,7 @@ describe("Anthropic to OpenAI translation logic", () => {
       tool_choice: { type: "auto" },
     }
     const openAIPayload = translateToOpenAI(anthropicPayload)
-    expect(isValidChatCompletionRequest(openAIPayload)).toBe(true)
+    assert.deepStrictEqual(isValidChatCompletionRequest(openAIPayload), true)
   })
 
   test("should handle missing fields gracefully", () => {
@@ -110,7 +111,7 @@ describe("Anthropic to OpenAI translation logic", () => {
       max_tokens: 0,
     }
     const openAIPayload = translateToOpenAI(anthropicPayload)
-    expect(isValidChatCompletionRequest(openAIPayload)).toBe(true)
+    assert.deepStrictEqual(isValidChatCompletionRequest(openAIPayload), true)
   })
 
   test("should handle invalid types in Anthropic payload", () => {
@@ -118,11 +119,10 @@ describe("Anthropic to OpenAI translation logic", () => {
       model: "gpt-4o",
       messages: [{ role: "user", content: "Hello!" }],
       temperature: "hot", // Should be a number
+      max_tokens: 0,
     }
-    // @ts-expect-error intended to be invalid
-    const openAIPayload = translateToOpenAI(anthropicPayload)
-    // Should fail validation
-    expect(isValidChatCompletionRequest(openAIPayload)).toBe(false)
+      // Should fail validation
+      assert.deepStrictEqual(isValidChatCompletionRequest(anthropicPayload), false)
   })
 
   test("should handle thinking blocks in assistant messages", () => {
@@ -144,16 +144,18 @@ describe("Anthropic to OpenAI translation logic", () => {
       max_tokens: 100,
     }
     const openAIPayload = translateToOpenAI(anthropicPayload)
-    expect(isValidChatCompletionRequest(openAIPayload)).toBe(true)
+    assert.deepStrictEqual(isValidChatCompletionRequest(openAIPayload), true)
 
     // Check that thinking content is combined with text content
     const assistantMessage = openAIPayload.messages.find(
-      (m) => m.role === "assistant",
+      (m: Message) => m.role === "assistant",
     )
-    expect(assistantMessage?.content).toContain(
-      "Let me think about this simple math problem...",
-    )
-    expect(assistantMessage?.content).toContain("2+2 equals 4.")
+    if (typeof assistantMessage?.content === "string") {
+      assert.match(assistantMessage.content, /Let me think about this simple math problem.../)
+      assert.match(assistantMessage.content, /2\+2 equals 4\./)
+    } else {
+      assert.fail("assistantMessage.content is not a string")
+    }
   })
 
   test("should handle thinking blocks with tool calls", () => {
@@ -182,20 +184,23 @@ describe("Anthropic to OpenAI translation logic", () => {
       max_tokens: 100,
     }
     const openAIPayload = translateToOpenAI(anthropicPayload)
-    expect(isValidChatCompletionRequest(openAIPayload)).toBe(true)
+    assert.deepStrictEqual(isValidChatCompletionRequest(openAIPayload), true)
 
     // Check that thinking content is included in the message content
     const assistantMessage = openAIPayload.messages.find(
-      (m) => m.role === "assistant",
+      (m: Message) => m.role === "assistant",
     )
-    expect(assistantMessage?.content).toContain(
-      "I need to call the weather API",
+    if (typeof assistantMessage?.content === "string") {
+      assert.match(assistantMessage.content, /I need to call the weather API/)
+      assert.match(assistantMessage.content, /I'll check the weather for you\./)
+    } else {
+      assert.fail("assistantMessage.content is not a string")
+    }
+    assert.strictEqual(assistantMessage?.tool_calls?.length, 1)
+    assert.strictEqual(
+      assistantMessage?.tool_calls?.[0].function.name,
+      "get_weather",
     )
-    expect(assistantMessage?.content).toContain(
-      "I'll check the weather for you.",
-    )
-    expect(assistantMessage?.tool_calls).toHaveLength(1)
-    expect(assistantMessage?.tool_calls?.[0].function.name).toBe("get_weather")
   })
 })
 
@@ -205,7 +210,7 @@ describe("OpenAI Chat Completion v1 Request Payload Validation with Zod", () => 
       model: "gpt-4o",
       messages: [{ role: "user", content: "Hello!" }],
     }
-    expect(isValidChatCompletionRequest(validPayload)).toBe(true)
+    assert.deepStrictEqual(isValidChatCompletionRequest(validPayload), true)
   })
 
   test("should return true for a comprehensive valid request payload", () => {
@@ -223,21 +228,21 @@ describe("OpenAI Chat Completion v1 Request Payload Validation with Zod", () => 
       stream: false,
       n: 1,
     }
-    expect(isValidChatCompletionRequest(validPayload)).toBe(true)
+    assert.deepStrictEqual(isValidChatCompletionRequest(validPayload), true)
   })
 
   test('should return false if the "model" field is missing', () => {
     const invalidPayload = {
       messages: [{ role: "user", content: "Hello!" }],
     }
-    expect(isValidChatCompletionRequest(invalidPayload)).toBe(false)
+    assert.deepStrictEqual(isValidChatCompletionRequest(invalidPayload), false)
   })
 
   test('should return false if the "messages" field is missing', () => {
     const invalidPayload = {
       model: "gpt-4o",
     }
-    expect(isValidChatCompletionRequest(invalidPayload)).toBe(false)
+    assert.deepStrictEqual(isValidChatCompletionRequest(invalidPayload), false)
   })
 
   test('should return false if the "messages" array is empty', () => {
@@ -245,7 +250,7 @@ describe("OpenAI Chat Completion v1 Request Payload Validation with Zod", () => 
       model: "gpt-4o",
       messages: [],
     }
-    expect(isValidChatCompletionRequest(invalidPayload)).toBe(false)
+    assert.deepStrictEqual(isValidChatCompletionRequest(invalidPayload), false)
   })
 
   test('should return false if "model" is not a string', () => {
@@ -253,7 +258,7 @@ describe("OpenAI Chat Completion v1 Request Payload Validation with Zod", () => 
       model: 12345,
       messages: [{ role: "user", content: "Hello!" }],
     }
-    expect(isValidChatCompletionRequest(invalidPayload)).toBe(false)
+    assert.deepStrictEqual(isValidChatCompletionRequest(invalidPayload), false)
   })
 
   test('should return false if "messages" is not an array', () => {
@@ -261,7 +266,7 @@ describe("OpenAI Chat Completion v1 Request Payload Validation with Zod", () => 
       model: "gpt-4o",
       messages: { role: "user", content: "Hello!" },
     }
-    expect(isValidChatCompletionRequest(invalidPayload)).toBe(false)
+    assert.deepStrictEqual(isValidChatCompletionRequest(invalidPayload), false)
   })
 
   test('should return false if a message in the "messages" array is missing a "role"', () => {
@@ -269,7 +274,7 @@ describe("OpenAI Chat Completion v1 Request Payload Validation with Zod", () => 
       model: "gpt-4o",
       messages: [{ content: "Hello!" }],
     }
-    expect(isValidChatCompletionRequest(invalidPayload)).toBe(false)
+    assert.deepStrictEqual(isValidChatCompletionRequest(invalidPayload), false)
   })
 
   test('should return false if a message in the "messages" array is missing "content"', () => {
@@ -279,7 +284,7 @@ describe("OpenAI Chat Completion v1 Request Payload Validation with Zod", () => 
     }
     // Note: Zod considers 'undefined' as missing, so this will fail as expected.
     const result = chatCompletionRequestSchema.safeParse(invalidPayload)
-    expect(result.success).toBe(false)
+    assert.deepStrictEqual(result.success, false)
   })
 
   test('should return false if a message has an invalid "role"', () => {
@@ -287,7 +292,7 @@ describe("OpenAI Chat Completion v1 Request Payload Validation with Zod", () => 
       model: "gpt-4o",
       messages: [{ role: "customer", content: "Hello!" }],
     }
-    expect(isValidChatCompletionRequest(invalidPayload)).toBe(false)
+    assert.deepStrictEqual(isValidChatCompletionRequest(invalidPayload), false)
   })
 
   test("should return false if an optional field has an incorrect type", () => {
@@ -296,18 +301,18 @@ describe("OpenAI Chat Completion v1 Request Payload Validation with Zod", () => 
       messages: [{ role: "user", content: "Hello!" }],
       temperature: "hot", // Should be a number
     }
-    expect(isValidChatCompletionRequest(invalidPayload)).toBe(false)
+    assert.deepStrictEqual(isValidChatCompletionRequest(invalidPayload), false)
   })
 
   test("should return false for a completely empty object", () => {
     const invalidPayload = {}
-    expect(isValidChatCompletionRequest(invalidPayload)).toBe(false)
+    assert.deepStrictEqual(isValidChatCompletionRequest(invalidPayload), false)
   })
 
   test("should return false for null or non-object payloads", () => {
-    expect(isValidChatCompletionRequest(null)).toBe(false)
-    expect(isValidChatCompletionRequest(undefined)).toBe(false)
-    expect(isValidChatCompletionRequest("a string")).toBe(false)
-    expect(isValidChatCompletionRequest(123)).toBe(false)
+    assert.strictEqual(isValidChatCompletionRequest(null), false)
+    assert.strictEqual(isValidChatCompletionRequest(undefined), false)
+    assert.strictEqual(isValidChatCompletionRequest("a string"), false)
+    assert.strictEqual(isValidChatCompletionRequest(123), false)
   })
 })

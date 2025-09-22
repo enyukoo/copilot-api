@@ -1,6 +1,6 @@
-import { copilotBaseUrl, copilotHeaders } from "~/lib/api-config"
-import { HTTPError } from "~/lib/error"
-import { state } from "~/lib/state"
+import { copilotBaseUrl, copilotHeaders } from "../../lib/api-config.js"
+import { HTTPError } from "../../lib/error.js"
+import { state } from "../../lib/state.js"
 
 export const getModels = async () => {
   const response = await fetch(`${copilotBaseUrl(state)}/models`, {

@@ -2,10 +2,10 @@
 
 import { defineCommand, runMain } from "citty"
 
-import { auth } from "./auth"
-import { checkUsage } from "./check-usage"
-import { debug } from "./debug"
-import { start } from "./start"
+import { auth } from "./auth.js"
+import { checkUsage } from "./check-usage.js"
+import { debug } from "./debug.js"
+import { start } from "./start.js"
 
 const main = defineCommand({
   meta: {

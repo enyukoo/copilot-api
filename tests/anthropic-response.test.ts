@@ -1,14 +1,15 @@
-import { describe, test, expect } from "bun:test"
+import assert from "node:assert/strict"
+import { describe, test } from "node:test"
 import { z } from "zod"
 
 import type {
   ChatCompletionChunk,
   ChatCompletionResponse,
-} from "~/services/copilot/create-chat-completions"
+} from "../src/services/copilot/create-chat-completions.js"
 
-import { type AnthropicStreamState } from "~/routes/messages/anthropic-types"
-import { translateToAnthropic } from "~/routes/messages/non-stream-translation"
-import { translateChunkToAnthropicEvents } from "~/routes/messages/stream-translation"
+import { type AnthropicStreamState } from "../src/routes/messages/anthropic-types.js"
+import { translateToAnthropic } from "../src/routes/messages/non-stream-translation.js"
+import { translateChunkToAnthropicEvents } from "../src/routes/messages/stream-translation.js"
 
 const anthropicUsageSchema = z.object({
   input_tokens: z.number().int(),
@@ -96,14 +97,15 @@ describe("OpenAI to Anthropic Non-Streaming Response Translation", () => {
 
     const anthropicResponse = translateToAnthropic(openAIResponse)
 
-    expect(isValidAnthropicResponse(anthropicResponse)).toBe(true)
+    assert.strictEqual(isValidAnthropicResponse(anthropicResponse), true)
 
-    expect(anthropicResponse.id).toBe("chatcmpl-123")
-    expect(anthropicResponse.stop_reason).toBe("end_turn")
-    expect(anthropicResponse.usage.input_tokens).toBe(9)
-    expect(anthropicResponse.content[0].type).toBe("text")
+    assert.strictEqual(anthropicResponse.id, "chatcmpl-123")
+    assert.strictEqual(anthropicResponse.stop_reason, "end_turn")
+    assert.strictEqual(anthropicResponse.usage.input_tokens, 9)
+    assert.strictEqual(anthropicResponse.content[0].type, "text")
     if (anthropicResponse.content[0].type === "text") {
-      expect(anthropicResponse.content[0].text).toBe(
+      assert.strictEqual(
+        anthropicResponse.content[0].text,
         "Hello! How can I help you today?",
       )
     } else {
@@ -147,14 +149,17 @@ describe("OpenAI to Anthropic Non-Streaming Response Translation", () => {
 
     const anthropicResponse = translateToAnthropic(openAIResponse)
 
-    expect(isValidAnthropicResponse(anthropicResponse)).toBe(true)
+    assert.strictEqual(isValidAnthropicResponse(anthropicResponse), true)
 
-    expect(anthropicResponse.stop_reason).toBe("tool_use")
-    expect(anthropicResponse.content[0].type).toBe("tool_use")
+    assert.strictEqual(anthropicResponse.stop_reason, "tool_use")
+    assert.strictEqual(anthropicResponse.content[0].type, "tool_use")
     if (anthropicResponse.content[0].type === "tool_use") {
-      expect(anthropicResponse.content[0].id).toBe("call_abc")
-      expect(anthropicResponse.content[0].name).toBe("get_current_weather")
-      expect(anthropicResponse.content[0].input).toEqual({
+      assert.strictEqual(anthropicResponse.content[0].id, "call_abc")
+      assert.strictEqual(
+        anthropicResponse.content[0].name,
+        "get_current_weather",
+      )
+      assert.deepStrictEqual(anthropicResponse.content[0].input, {
         location: "Boston, MA",
       })
     } else {
@@ -188,8 +193,8 @@ describe("OpenAI to Anthropic Non-Streaming Response Translation", () => {
 
     const anthropicResponse = translateToAnthropic(openAIResponse)
 
-    expect(isValidAnthropicResponse(anthropicResponse)).toBe(true)
-    expect(anthropicResponse.stop_reason).toBe("max_tokens")
+    assert.strictEqual(isValidAnthropicResponse(anthropicResponse), true)
+    assert.strictEqual(anthropicResponse.stop_reason, "max_tokens")
   })
 })
 
@@ -260,7 +265,7 @@ describe("OpenAI to Anthropic Streaming Response Translation", () => {
     )
 
     for (const event of translatedStream) {
-      expect(isValidAnthropicStreamEvent(event)).toBe(true)
+      assert.strictEqual(isValidAnthropicStreamEvent(event), true)
     }
   })
 
@@ -361,7 +366,7 @@ describe("OpenAI to Anthropic Streaming Response Translation", () => {
 
     // These tests will fail until the stub is implemented
     for (const event of translatedStream) {
-      expect(isValidAnthropicStreamEvent(event)).toBe(true)
+      assert.strictEqual(isValidAnthropicStreamEvent(event), true)
     }
   })
 })

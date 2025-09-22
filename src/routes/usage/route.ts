@@ -1,6 +1,6 @@
 import { Hono } from "hono"
 
-import { getCopilotUsage } from "~/services/github/get-copilot-usage"
+import { getCopilotUsage } from "../../services/github/get-copilot-usage.js"
 
 export const usageRoute = new Hono()
 

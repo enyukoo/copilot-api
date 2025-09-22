@@ -1,9 +1,9 @@
 import consola from "consola"
 import { events } from "fetch-event-stream"
 
-import { copilotHeaders, copilotBaseUrl } from "~/lib/api-config"
-import { HTTPError } from "~/lib/error"
-import { state } from "~/lib/state"
+import { copilotHeaders, copilotBaseUrl } from "../../lib/api-config.js"
+import { HTTPError } from "../../lib/error.js"
+import { state } from "../../lib/state.js"
 
 export const createChatCompletions = async (
   payload: ChatCompletionsPayload,

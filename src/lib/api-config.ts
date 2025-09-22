@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto"
 
-import type { State } from "./state"
+import type { State } from "./state.js"
 
 export const standardHeaders = () => ({
   "content-type": "application/json",

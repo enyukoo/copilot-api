@@ -1,4 +1,4 @@
-import type { ModelsResponse } from "~/services/copilot/get-models"
+import type { ModelsResponse } from "../services/copilot/get-models.js"
 
 export interface State {
   githubToken?: string

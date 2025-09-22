@@ -3,22 +3,43 @@ import type { Context } from "hono"
 import consola from "consola"
 import { streamSSE, type SSEMessage } from "hono/streaming"
 
-import { awaitApproval } from "~/lib/approval"
-import { checkRateLimit } from "~/lib/rate-limit"
-import { state } from "~/lib/state"
-import { getTokenCount } from "~/lib/tokenizer"
-import { isNullish } from "~/lib/utils"
-import {
-  createChatCompletions,
-  type ChatCompletionResponse,
-  type ChatCompletionsPayload,
-} from "~/services/copilot/create-chat-completions"
+import type {
+  ChatCompletionResponse,
+  ChatCompletionsPayload,
+} from "../../services/copilot/create-chat-completions.js"
+
+import { awaitApproval } from "../../lib/approval.js"
+import { HTTPError } from "../../lib/error.js"
+import { checkRateLimit } from "../../lib/rate-limit.js"
+import { state } from "../../lib/state.js"
+import { getTokenCount } from "../../lib/tokenizer.js"
+import { isNullish } from "../../lib/utils.js"
+import { createChatCompletions } from "../../services/copilot/create-chat-completions.js"
 
 export async function handleCompletion(c: Context) {
   await checkRateLimit(state)
-
-  let payload = await c.req.json<ChatCompletionsPayload>()
+  let payload: ChatCompletionsPayload
+  try {
+    payload = await c.req.json<ChatCompletionsPayload>()
+  } catch (err) {
+    consola.warn("Invalid JSON payload", err)
+    throw new HTTPError(
+      "Invalid JSON payload",
+      Response.json({ message: "Invalid JSON payload" }, { status: 400 }),
+    )
+  }
   consola.debug("Request payload:", JSON.stringify(payload).slice(-400))
+
+  if (!Array.isArray(payload.messages) || !payload.model) {
+    consola.warn("Bad request payload", payload)
+    throw new HTTPError(
+      "Bad request",
+      Response.json(
+        { message: "Missing required fields: messages and model" },
+        { status: 400 },
+      ),
+    )
+  }
 
   consola.info("Current token count:", getTokenCount(payload.messages))
 

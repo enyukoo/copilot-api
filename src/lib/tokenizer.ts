@@ -1,6 +1,6 @@
 import { countTokens } from "gpt-tokenizer/model/gpt-4o"
 
-import type { Message } from "~/services/copilot/create-chat-completions"
+import type { Message } from "../services/copilot/create-chat-completions.js"
 
 export const getTokenCount = (messages: Array<Message>) => {
   const simplifiedMessages = messages.map((message) => {

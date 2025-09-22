@@ -6,12 +6,12 @@ import consola from "consola"
 import { serve, type ServerHandler } from "srvx"
 import invariant from "tiny-invariant"
 
-import { ensurePaths } from "./lib/paths"
-import { generateEnvScript } from "./lib/shell"
-import { state } from "./lib/state"
-import { setupCopilotToken, setupGitHubToken } from "./lib/token"
-import { cacheModels, cacheVSCodeVersion } from "./lib/utils"
-import { server } from "./server"
+import { ensurePaths } from "./lib/paths.js"
+import { generateEnvScript } from "./lib/shell.js"
+import { state } from "./lib/state.js"
+import { setupCopilotToken, setupGitHubToken } from "./lib/token.js"
+import { cacheModels, cacheVSCodeVersion } from "./lib/utils.js"
+import { server } from "./server.js"
 
 interface RunServerOptions {
   port: number
@@ -55,7 +55,7 @@ export async function runServer(options: RunServerOptions): Promise<void> {
   await cacheModels()
 
   consola.info(
-    `Available models: \n${state.models?.data.map((model) => `- ${model.id}`).join("\n")}`,
+  `Available models: \n${state.models?.data.map((model) => `- ${model.id}`).join("\n")}`,
   )
 
   const serverUrl = `http://localhost:${options.port}`
@@ -67,7 +67,7 @@ export async function runServer(options: RunServerOptions): Promise<void> {
       "Select a model to use with Claude Code",
       {
         type: "select",
-        options: state.models.data.map((model) => model.id),
+  options: state.models.data.map((model) => model.id),
       },
     )
 
@@ -75,7 +75,7 @@ export async function runServer(options: RunServerOptions): Promise<void> {
       "Select a small model to use with Claude Code",
       {
         type: "select",
-        options: state.models.data.map((model) => model.id),
+  options: state.models.data.map((model) => model.id),
       },
     )
 
