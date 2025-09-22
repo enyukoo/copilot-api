@@ -41,7 +41,7 @@ async function getPackageVersion(): Promise<string> {
 }
 
 function getRuntimeInfo() {
-  // Bun support removed
+  // Node.js runtime only
 
   return {
     name: "node",

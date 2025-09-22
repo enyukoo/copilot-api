@@ -1,11 +1,10 @@
-import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { describe, test, assert } from "vitest"
 import { z } from "zod"
 
 import type { AnthropicMessagesPayload } from "../src/routes/messages/anthropic-types.js"
+import type { Message } from "../src/services/copilot/create-chat-completions.js"
 
 import { translateToOpenAI } from "../src/routes/messages/non-stream-translation.js"
-import type { Message } from "../src/services/copilot/create-chat-completions.js"
 
 // Zod schema for a single message in the chat completion request.
 const messageSchema = z.object({
@@ -121,8 +120,11 @@ describe("Anthropic to OpenAI translation logic", () => {
       temperature: "hot", // Should be a number
       max_tokens: 0,
     }
-      // Should fail validation
-      assert.deepStrictEqual(isValidChatCompletionRequest(anthropicPayload), false)
+    // Should fail validation
+    assert.deepStrictEqual(
+      isValidChatCompletionRequest(anthropicPayload),
+      false,
+    )
   })
 
   test("should handle thinking blocks in assistant messages", () => {
@@ -151,7 +153,10 @@ describe("Anthropic to OpenAI translation logic", () => {
       (m: Message) => m.role === "assistant",
     )
     if (typeof assistantMessage?.content === "string") {
-      assert.match(assistantMessage.content, /Let me think about this simple math problem.../)
+      assert.match(
+        assistantMessage.content,
+        /Let me think about this simple math problem.../,
+      )
       assert.match(assistantMessage.content, /2\+2 equals 4\./)
     } else {
       assert.fail("assistantMessage.content is not a string")
@@ -190,17 +195,17 @@ describe("Anthropic to OpenAI translation logic", () => {
     const assistantMessage = openAIPayload.messages.find(
       (m: Message) => m.role === "assistant",
     )
-    if (typeof assistantMessage?.content === "string") {
-      assert.match(assistantMessage.content, /I need to call the weather API/)
-      assert.match(assistantMessage.content, /I'll check the weather for you\./)
+    const content = assistantMessage ? assistantMessage.content : undefined
+    if (typeof content === "string") {
+      assert.match(content, /I need to call the weather API/)
+      assert.match(content, /I'll check the weather for you\./)
     } else {
       assert.fail("assistantMessage.content is not a string")
     }
-    assert.strictEqual(assistantMessage?.tool_calls?.length, 1)
-    assert.strictEqual(
-      assistantMessage?.tool_calls?.[0].function.name,
-      "get_weather",
-    )
+    const toolCalls =
+      assistantMessage ? (assistantMessage.tool_calls ?? []) : []
+    assert.strictEqual(toolCalls.length, 1)
+    assert.strictEqual(toolCalls[0].function.name, "get_weather")
   })
 })
 

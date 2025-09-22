@@ -55,7 +55,7 @@ export async function runServer(options: RunServerOptions): Promise<void> {
   await cacheModels()
 
   consola.info(
-  `Available models: \n${state.models?.data.map((model) => `- ${model.id}`).join("\n")}`,
+    `Available models: \n${state.models?.data.map((model) => `- ${model.id}`).join("\n")}`,
   )
 
   const serverUrl = `http://localhost:${options.port}`
@@ -67,7 +67,7 @@ export async function runServer(options: RunServerOptions): Promise<void> {
       "Select a model to use with Claude Code",
       {
         type: "select",
-  options: state.models.data.map((model) => model.id),
+        options: state.models.data.map((model) => model.id),
       },
     )
 
@@ -75,7 +75,7 @@ export async function runServer(options: RunServerOptions): Promise<void> {
       "Select a small model to use with Claude Code",
       {
         type: "select",
-  options: state.models.data.map((model) => model.id),
+        options: state.models.data.map((model) => model.id),
       },
     )
 

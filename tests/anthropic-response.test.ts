@@ -1,5 +1,4 @@
-import assert from "node:assert/strict"
-import { describe, test } from "node:test"
+import { describe, test, assert } from "vitest"
 import { z } from "zod"
 
 import type {
