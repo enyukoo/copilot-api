@@ -1,4 +1,5 @@
-import { test, assert } from "vitest"
+import assert from "node:assert"
+import { test } from "node:test"
 
 import type { ChatCompletionsPayload } from "../src/services/copilot/create-chat-completions.js"
 
@@ -30,8 +31,7 @@ const fetchMock = async (
   }
 }
 ;(globalThis as unknown as { fetch?: typeof fetchMock }).fetch = fetchMock
-
-test("sets X-Initiator to agent if tool/assistant present", async () => {
+void test("sets X-Initiator to agent if tool/assistant present", async () => {
   const payload: ChatCompletionsPayload = {
     messages: [
       { role: "user", content: "hi" },
@@ -44,8 +44,7 @@ test("sets X-Initiator to agent if tool/assistant present", async () => {
   const headers = fetchMockCalls[0][1].headers
   assert.strictEqual(headers["X-Initiator"], "agent")
 })
-
-test("sets X-Initiator to user if only user present", async () => {
+void test("sets X-Initiator to user if only user present", async () => {
   const payload: ChatCompletionsPayload = {
     messages: [
       { role: "user", content: "hi" },
