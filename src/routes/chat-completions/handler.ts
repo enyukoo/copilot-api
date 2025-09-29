@@ -16,6 +16,7 @@ import { getTokenCount } from "../../lib/tokenizer.js"
 import { isNullish } from "../../lib/utils.js"
 import { createChatCompletions } from "../../services/copilot/create-chat-completions.js"
 import { trackRequest } from "../../lib/analytics.js"
+import { trackPerformance } from "../../lib/performance-tracker.js"
 
 export async function handleCompletion(c: Context) {
   const startTime = Date.now()
@@ -71,8 +72,9 @@ export async function handleCompletion(c: Context) {
   try {
     const response = await createChatCompletions(payload)
 
-    // Track successful request
+    // Track successful request and performance
     trackRequest(payload.model, startTime, true)
+    trackPerformance(payload.model, startTime, true)
 
     if (isNonStreaming(response)) {
       consola.debug("Non-streaming response:", JSON.stringify(response))
@@ -87,8 +89,9 @@ export async function handleCompletion(c: Context) {
       }
     })
   } catch (error) {
-    // Track failed request
+    // Track failed request and performance
     trackRequest(payload.model, startTime, false)
+    trackPerformance(payload.model, startTime, false)
     throw error
   }
 }

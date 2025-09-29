@@ -19,6 +19,7 @@ import { usageRoute } from "./routes/usage/route.js"
 import analyticsRoute from "./routes/analytics/route.js"
 import claudeCodeRoute from "./routes/claude-code/route.js"
 import { docsRoute } from "./routes/docs/route.js"
+import { performanceRoute } from "./routes/performance/route.js"
 import consola from "consola"
 
 export const server = new Hono()
@@ -48,6 +49,7 @@ server.use(addRateLimitHeaders())
 server.get("/", (c) => c.text("Server running"))
 server.route("/health", healthRoute)
 server.route("/docs", docsRoute)
+server.route("/performance", performanceRoute)
 
 // Dashboard endpoint
 server.get("/dashboard", async (c) => {

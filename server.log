@@ -51,5 +51,8 @@ nohup: ignoring input
 ✔ 🚀 Server running on http://localhost:4141
 ℹ Press Ctrl+C to stop the server gracefully
 <-- POST /v1/chat/completions
-ℹ Current token count: { input: 9, output: 3 }
---> POST /v1/chat/completions [32m200[0m 4s
+ℹ Current token count: { input: 19, output: 3 }
+--> POST /v1/chat/completions [32m200[0m 3s
+<-- POST /v1/chat/completions
+ℹ Current token count: { input: 25, output: 3 }
+--> POST /v1/chat/completions [32m200[0m 7s

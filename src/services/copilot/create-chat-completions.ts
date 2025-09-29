@@ -10,17 +10,43 @@ export const createChatCompletions = async (
 ) => {
   if (!state.copilotToken) throw new Error("Copilot token not found")
 
-  const enableVision = payload.messages.some(
+  // Process agent prompt if provided
+  let processedMessages = payload.messages;
+  if (payload.agent_prompt && payload.agent_prompt.trim()) {
+    // Check if there's already a system message
+    const hasSystemMessage = payload.messages.some(msg => msg.role === "system");
+    
+    if (hasSystemMessage) {
+      // If system message exists, prepend agent prompt to the first system message
+      processedMessages = payload.messages.map((msg, index) => {
+        if (msg.role === "system" && index === payload.messages.findIndex(m => m.role === "system")) {
+          return {
+            ...msg,
+            content: payload.agent_prompt + "\n\n" + (typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content))
+          };
+        }
+        return msg;
+      });
+    } else {
+      // Add agent prompt as new system message at the beginning
+      processedMessages = [
+        { role: "system", content: payload.agent_prompt },
+        ...payload.messages
+      ];
+    }
+  }
+
+  const enableVision = processedMessages.some(
     (x) =>
       typeof x.content !== "string"
       && x.content?.some((x) => x.type === "image_url"),
   )
 
   // Agent/user check for X-Initiator header
-  // Determine if any message is from an agent ("assistant" or "tool")
-  const isAgentCall = payload.messages.some((msg) =>
+  // Determine if any message is from an agent ("assistant" or "tool") or if agent_prompt is provided
+  const isAgentCall = processedMessages.some((msg) =>
     ["assistant", "tool"].includes(msg.role),
-  )
+  ) || Boolean(payload.agent_prompt?.trim())
 
   // Build headers and add X-Initiator
   const headers: Record<string, string> = {
@@ -28,10 +54,18 @@ export const createChatCompletions = async (
     "X-Initiator": isAgentCall ? "agent" : "user",
   }
 
+  // Create the final payload with processed messages
+  const finalPayload = {
+    ...payload,
+    messages: processedMessages,
+    // Remove agent_prompt from the payload sent to the API
+    agent_prompt: undefined
+  };
+
   const response = await fetch(`${copilotBaseUrl(state)}/chat/completions`, {
     method: "POST",
     headers,
-    body: JSON.stringify(payload),
+    body: JSON.stringify(finalPayload),
   })
 
   if (!response.ok) {
@@ -124,6 +158,7 @@ interface ChoiceNonStreaming {
 export interface ChatCompletionsPayload {
   messages: Array<Message>
   model: string
+  agent_prompt?: string | null  // Custom field: system prompt for agent behavior
   temperature?: number | null
   top_p?: number | null
   max_tokens?: number | null
