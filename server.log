@@ -1,12 +1,6 @@
 nohup: ignoring input
-ℹ Verbose logging enabled
-⚙ Registered shutdown handler: cleanup-temp
-⚙ Registered shutdown handler: flush-logs
-⚙ Registered shutdown handler: close-db
-⚙ Registered shutdown handler: stop-background-tasks
 ℹ Using VSCode version: 1.104.2
 ℹ Logged in as enyukoo
-⚙ GitHub Copilot Token fetched successfully!
 ℹ Available models: 
 - gpt-4.1
 - gpt-5-mini
@@ -42,41 +36,53 @@ nohup: ignoring input
 - o4-mini-2025-04-16
 - gpt-4.1-2025-04-14
 
- ╭────────────────────────────────────────────────────────────────────────────────────────────────╮
- │                                                                                                │
- │  🌐 Usage Viewer: https://ericc-ch.github.io/copilot-api?endpoint=http://localhost:4141/usage  │
- │                                                                                                │
- ╰────────────────────────────────────────────────────────────────────────────────────────────────╯
+ ╭──────────────────────────────────────────────────────────────────────────────────────────────╮
+ │                                                                                              │
+ │  🌐 Usage Dashboards:                                                                        │
+ │     • Built-in: http://localhost:4141/dashboard                                              │
+ │     • External: https://ericc-ch.github.io/copilot-api?endpoint=http://localhost:4141/usage  │
+ │                                                                                              │
+ ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
 
 ✔ 🚀 Server running on http://localhost:4141
 ℹ Press Ctrl+C to stop the server gracefully
-
- ERROR  Uncaught exception: listen EADDRINUSE: address already in use :::4141
-
-    at Server.setupListenHandle [as _listen2] (node:net:1811:16)
-    at listenInCluster (node:net:1859:12)
-    at Server.listen (node:net:1947:7)
-    at runServer (dist/start.js:99:39)
-    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
-    at async runCommand (node_modules/citty/dist/index.mjs:316:16)
-    at async runCommand (node_modules/citty/dist/index.mjs:307:11)
-    at async runMain (node_modules/citty/dist/index.mjs:445:7)
-    at async dist/main.js:17:1
-
-ℹ Starting graceful shutdown (signal: UNCAUGHT_EXCEPTION)...
-⚙ Running shutdown handler: cleanup-temp
-⚙ Cleaning up temporary files...
-⚙ Running shutdown handler: flush-logs
-⚙ Flushing logs...
-⚙ Running shutdown handler: close-db
-⚙ Closing database connections...
-⚙ Running shutdown handler: stop-background-tasks
-⚙ Stopping background tasks...
-⚙ Completed shutdown handler: cleanup-temp
-⚙ Completed shutdown handler: flush-logs
-⚙ Completed shutdown handler: close-db
-⚙ Completed shutdown handler: stop-background-tasks
-⚙ Closing server...
-ℹ Closing HTTP server...
-⚙ Server closed
-ℹ Graceful shutdown completed
+✔ 🚀 Server running on http://localhost:4141
+ℹ Press Ctrl+C to stop the server gracefully
+<-- POST /v1/chat/completions
+ℹ Current token count: { input: 11, output: 3 }
+--> POST /v1/chat/completions [32m200[0m 1s
+<-- GET /v1/models
+--> GET /v1/models [32m200[0m 3ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- POST /v1/chat/completions
+ℹ Current token count: { input: 15, output: 3 }
+--> POST /v1/chat/completions [32m200[0m 3s
+<-- POST /v1/chat/completions
+ℹ Current token count: { input: 130, output: 3 }
+--> POST /v1/chat/completions [32m200[0m 4s
+<-- GET /usage
+--> GET /usage [32m200[0m 461ms
+<-- GET /v1/usage
+--> GET /v1/usage [33m404[0m 1ms
+<-- GET /usage
+--> GET /usage [32m200[0m 398ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms
+<-- GET /
+--> GET / [32m200[0m 1ms
+<-- GET /analytics
+--> GET /analytics [32m200[0m 1ms
+<-- GET /token
+--> GET /token [32m200[0m 1ms
+<-- GET /v1/models
+--> GET /v1/models [32m200[0m 1ms
+<-- POST /v1/chat/completions
+ℹ Current token count: { input: 11, output: 3 }
+--> POST /v1/chat/completions [32m200[0m 1s
+<-- GET /usage
+--> GET /usage [32m200[0m 362ms
+<-- GET /analytics
+--> GET /analytics [32m200[0m 1ms
+<-- GET /health
+--> GET /health [32m200[0m 1ms

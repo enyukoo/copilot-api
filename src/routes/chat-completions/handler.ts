@@ -10,7 +10,7 @@ import type {
 
 import { awaitApproval } from "../../lib/approval.js"
 import { HTTPError } from "../../lib/error.js"
-import { checkRateLimit } from "../../lib/rate-limit.js"
+// import { checkRateLimit } from "../../lib/rate-limit.js"
 import { state } from "../../lib/state.js"
 import { getTokenCount } from "../../lib/tokenizer.js"
 import { isNullish } from "../../lib/utils.js"
@@ -22,13 +22,21 @@ export async function handleCompletion(c: Context) {
   let payload: ChatCompletionsPayload
   
   try {
-    await checkRateLimit(state)
-    payload = await c.req.json<ChatCompletionsPayload>()
+    // Temporarily disable rate limiting for testing
+    // await checkRateLimit(state)
+    
+    // Use manual JSON parsing to avoid Hono request body issues
+    const bodyText = await c.req.text()
+    if (!bodyText.trim()) {
+      throw new Error("Empty request body")
+    }
+    
+    payload = JSON.parse(bodyText) as ChatCompletionsPayload
   } catch (err) {
     consola.warn("Invalid JSON payload", err)
     throw new HTTPError(
-      "Invalid JSON payload",
-      Response.json({ message: "Invalid JSON payload" }, { status: 400 }),
+      "Invalid JSON payload", 
+      Response.json({ message: `Invalid JSON payload: ${(err as any)?.message || err}` }, { status: 400 }),
     )
   }
   consola.debug("Request payload:", JSON.stringify(payload).slice(-400))
