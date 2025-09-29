@@ -1,4 +1,3 @@
-# NOTE: This project must always be runnable and all methods must be compatible with Ubuntu 20. Any new method, dependency, or instruction added must be tested and confirmed to work on Ubuntu 20 (LTS) environments.
 # AGENTS.md
 
 ## Build, Lint, and Test Commands

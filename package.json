@@ -38,7 +38,11 @@
     "test:unit": "node --test --loader ts-node/esm tests/unit/*.test.ts",
     "test:integration": "node --test --loader ts-node/esm tests/integration/*.test.ts",
     "test:coverage": "node --test --experimental-test-coverage --loader ts-node/esm tests/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "token:generate": "NODE_ENV=production node -e \"import('./dist/cli/token-manager.js').then(m => m.generateApiKey())\"",
+    "token:show": "NODE_ENV=production node -e \"import('./dist/cli/token-manager.js').then(m => m.showCurrentKey())\"",
+    "token:status": "NODE_ENV=production node -e \"import('./dist/cli/token-manager.js').then(m => m.showStatus())\"",
+    "token:reset": "NODE_ENV=production node -e \"import('./dist/cli/token-manager.js').then(m => m.resetTokens())\""
   },
   "simple-git-hooks": {
     "pre-commit": "npx lint-staged"

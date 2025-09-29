@@ -1,4 +1,6 @@
 nohup: ignoring input
+✔ Authentication system initialized
+ℹ API Key available for external access
 ℹ Using VSCode version: 1.104.2
 ℹ Logged in as enyukoo
 ℹ Available models: 
@@ -49,40 +51,5 @@ nohup: ignoring input
 ✔ 🚀 Server running on http://localhost:4141
 ℹ Press Ctrl+C to stop the server gracefully
 <-- POST /v1/chat/completions
-ℹ Current token count: { input: 11, output: 3 }
---> POST /v1/chat/completions [32m200[0m 1s
-<-- GET /v1/models
---> GET /v1/models [32m200[0m 3ms
-<-- GET /health
---> GET /health [32m200[0m 1ms
-<-- POST /v1/chat/completions
-ℹ Current token count: { input: 15, output: 3 }
---> POST /v1/chat/completions [32m200[0m 3s
-<-- POST /v1/chat/completions
-ℹ Current token count: { input: 130, output: 3 }
+ℹ Current token count: { input: 9, output: 3 }
 --> POST /v1/chat/completions [32m200[0m 4s
-<-- GET /usage
---> GET /usage [32m200[0m 461ms
-<-- GET /v1/usage
---> GET /v1/usage [33m404[0m 1ms
-<-- GET /usage
---> GET /usage [32m200[0m 398ms
-<-- GET /health
---> GET /health [32m200[0m 1ms
-<-- GET /
---> GET / [32m200[0m 1ms
-<-- GET /analytics
---> GET /analytics [32m200[0m 1ms
-<-- GET /token
---> GET /token [32m200[0m 1ms
-<-- GET /v1/models
---> GET /v1/models [32m200[0m 1ms
-<-- POST /v1/chat/completions
-ℹ Current token count: { input: 11, output: 3 }
---> POST /v1/chat/completions [32m200[0m 1s
-<-- GET /usage
---> GET /usage [32m200[0m 362ms
-<-- GET /analytics
---> GET /analytics [32m200[0m 1ms
-<-- GET /health
---> GET /health [32m200[0m 1ms
