@@ -15,11 +15,14 @@ import { state } from "../../lib/state.js"
 import { getTokenCount } from "../../lib/tokenizer.js"
 import { isNullish } from "../../lib/utils.js"
 import { createChatCompletions } from "../../services/copilot/create-chat-completions.js"
+import { trackRequest } from "../../lib/analytics.js"
 
 export async function handleCompletion(c: Context) {
-  await checkRateLimit(state)
+  const startTime = Date.now()
   let payload: ChatCompletionsPayload
+  
   try {
+    await checkRateLimit(state)
     payload = await c.req.json<ChatCompletionsPayload>()
   } catch (err) {
     consola.warn("Invalid JSON payload", err)
@@ -57,20 +60,29 @@ export async function handleCompletion(c: Context) {
     consola.debug("Set max_tokens to:", JSON.stringify(payload.max_tokens))
   }
 
-  const response = await createChatCompletions(payload)
+  try {
+    const response = await createChatCompletions(payload)
 
-  if (isNonStreaming(response)) {
-    consola.debug("Non-streaming response:", JSON.stringify(response))
-    return c.json(response)
-  }
+    // Track successful request
+    trackRequest(payload.model, startTime, true)
 
-  consola.debug("Streaming response")
-  return streamSSE(c, async (stream) => {
-    for await (const chunk of response) {
-      consola.debug("Streaming chunk:", JSON.stringify(chunk))
-      await stream.writeSSE(chunk as SSEMessage)
+    if (isNonStreaming(response)) {
+      consola.debug("Non-streaming response:", JSON.stringify(response))
+      return c.json(response)
     }
-  })
+
+    consola.debug("Streaming response")
+    return streamSSE(c, async (stream) => {
+      for await (const chunk of response) {
+        consola.debug("Streaming chunk:", JSON.stringify(chunk))
+        await stream.writeSSE(chunk as SSEMessage)
+      }
+    })
+  } catch (error) {
+    // Track failed request
+    trackRequest(payload.model, startTime, false)
+    throw error
+  }
 }
 
 const isNonStreaming = (

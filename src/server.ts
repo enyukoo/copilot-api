@@ -15,6 +15,8 @@ import { messageRoutes } from "./routes/messages/route.js"
 import { modelRoutes } from "./routes/models/route.js"
 import { tokenRoute } from "./routes/token/route.js"
 import { usageRoute } from "./routes/usage/route.js"
+import analyticsRoute from "./routes/analytics/route.js"
+import claudeCodeRoute from "./routes/claude-code/route.js"
 
 export const server = new Hono()
 
@@ -68,6 +70,12 @@ server.route("/health", healthRoute)
 
 // Metrics endpoint
 server.get("/metrics", createMetricsHandler())
+
+// Analytics endpoints
+server.route("/analytics", analyticsRoute)
+
+// Claude Code integration endpoints
+server.route("/claude-code", claudeCodeRoute)
 
 server.route("/chat/completions", completionRoutes)
 server.route("/models", modelRoutes)
