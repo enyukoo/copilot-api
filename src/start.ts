@@ -123,7 +123,9 @@ export async function runServer(options: RunServerOptions): Promise<any> {
   }
 
   consola.box(
-    `🌐 Usage Viewer: https://ericc-ch.github.io/copilot-api?endpoint=${serverUrl}/usage`,
+    `🌐 Usage Dashboards:\n` +
+    `   • Built-in: ${serverUrl}/dashboard\n` +
+    `   • External: https://ericc-ch.github.io/copilot-api?endpoint=${serverUrl}/usage`,
   )
 
   // Start server with graceful shutdown support

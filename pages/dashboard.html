@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Copilot API Usage Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+        
+        .card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .metric:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            font-weight: 500;
+        }
+        
+        .metric-value {
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        
+        .status.healthy {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.warning {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .error {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .refresh-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.2s;
+        }
+        
+        .refresh-btn:hover {
+            background: #5a67d8;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Copilot API Dashboard</h1>
+            <p>Monitor your GitHub Copilot API usage and performance</p>
+        </div>
+        
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Loading dashboard data...</p>
+        </div>
+        
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="dashboard" class="dashboard" style="display: none;">
+            <!-- Server Status Card -->
+            <div class="card">
+                <h3>🚀 Server Status</h3>
+                <div class="metric">
+                    <span class="metric-label">Status</span>
+                    <span id="server-status" class="status healthy">Healthy</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Uptime</span>
+                    <span id="uptime" class="metric-value">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Memory Usage</span>
+                    <span id="memory-usage" class="metric-value">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Version</span>
+                    <span id="version" class="metric-value">-</span>
+                </div>
+            </div>
+            
+            <!-- Usage Statistics Card -->
+            <div class="card">
+                <h3>📊 Usage Statistics</h3>
+                <div class="metric">
+                    <span class="metric-label">Plan</span>
+                    <span id="plan" class="metric-value">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Premium Usage</span>
+                    <span id="premium-usage" class="metric-value">-</span>
+                </div>
+                <div class="progress-bar">
+                    <div id="premium-progress" class="progress-fill" style="width: 0%"></div>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Chat Usage</span>
+                    <span id="chat-usage" class="metric-value">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Completions Usage</span>
+                    <span id="completions-usage" class="metric-value">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Quota Reset</span>
+                    <span id="quota-reset" class="metric-value">-</span>
+                </div>
+            </div>
+            
+            <!-- Available Models Card -->
+            <div class="card">
+                <h3>🤖 Available Models</h3>
+                <div class="metric">
+                    <span class="metric-label">Total Models</span>
+                    <span id="total-models" class="metric-value">-</span>
+                </div>
+                <div id="models-list" style="margin-top: 15px; max-height: 200px; overflow-y: auto;"></div>
+            </div>
+            
+            <!-- Authentication Card -->
+            <div class="card">
+                <h3>🔐 Authentication</h3>
+                <div class="metric">
+                    <span class="metric-label">GitHub User</span>
+                    <span id="github-user" class="metric-value">-</span>
+                </div>
+                <div class="metric">
+                    <span class="metric-label">Token Status</span>
+                    <span id="token-status" class="status healthy">Active</span>
+                </div>
+            </div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <button id="refresh-btn" class="refresh-btn" onclick="loadDashboardData()">
+                🔄 Refresh Data
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Extract server URL from current page URL or use default
+        const urlParams = new URLSearchParams(window.location.search);
+        const serverUrl = urlParams.get('endpoint') || 'http://localhost:4141';
+        
+        async function fetchData(endpoint) {
+            try {
+                const response = await fetch(`${serverUrl}${endpoint}`);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                console.error(`Failed to fetch ${endpoint}:`, error);
+                throw error;
+            }
+        }
+        
+        async function loadDashboardData() {
+            const loadingEl = document.getElementById('loading');
+            const errorEl = document.getElementById('error');
+            const dashboardEl = document.getElementById('dashboard');
+            
+            loadingEl.style.display = 'block';
+            errorEl.style.display = 'none';
+            dashboardEl.style.display = 'none';
+            
+            try {
+                // Load all data in parallel
+                const [health, usage, models, token] = await Promise.all([
+                    fetchData('/health'),
+                    fetchData('/usage').catch(() => null),
+                    fetchData('/v1/models'),
+                    fetchData('/token').catch(() => null)
+                ]);
+                
+                // Update server status
+                document.getElementById('server-status').textContent = health.status || 'Unknown';
+                document.getElementById('uptime').textContent = health.uptime ? `${Math.floor(health.uptime / 3600)}h ${Math.floor((health.uptime % 3600) / 60)}m` : 'Unknown';
+                document.getElementById('memory-usage').textContent = health.memory ? `${health.memory.percentage}% (${health.memory.used}MB/${health.memory.total}MB)` : 'Unknown';
+                document.getElementById('version').textContent = health.version || 'Unknown';
+                
+                // Update usage statistics
+                if (usage) {
+                    document.getElementById('plan').textContent = usage.copilot_plan || 'Unknown';
+                    
+                    if (usage.quota_snapshots?.premium_interactions) {
+                        const premium = usage.quota_snapshots.premium_interactions;
+                        const used = premium.entitlement - premium.remaining;
+                        const percentage = premium.entitlement > 0 ? (used / premium.entitlement * 100) : 0;
+                        
+                        document.getElementById('premium-usage').textContent = `${used}/${premium.entitlement} (${percentage.toFixed(1)}%)`;
+                        document.getElementById('premium-progress').style.width = `${percentage}%`;
+                    }
+                    
+                    if (usage.quota_snapshots?.chat) {
+                        const chat = usage.quota_snapshots.chat;
+                        const used = chat.entitlement - chat.remaining;
+                        document.getElementById('chat-usage').textContent = `${used}/${chat.entitlement}`;
+                    }
+                    
+                    if (usage.quota_snapshots?.completions) {
+                        const completions = usage.quota_snapshots.completions;
+                        const used = completions.entitlement - completions.remaining;
+                        document.getElementById('completions-usage').textContent = `${used}/${completions.entitlement}`;
+                    }
+                    
+                    document.getElementById('quota-reset').textContent = usage.quota_reset_date || 'Unknown';
+                } else {
+                    document.getElementById('plan').textContent = 'Unable to load';
+                    document.getElementById('premium-usage').textContent = 'Unable to load';
+                    document.getElementById('chat-usage').textContent = 'Unable to load';
+                    document.getElementById('completions-usage').textContent = 'Unable to load';
+                    document.getElementById('quota-reset').textContent = 'Unable to load';
+                }
+                
+                // Update models
+                if (models?.data) {
+                    document.getElementById('total-models').textContent = models.data.length;
+                    const modelsList = document.getElementById('models-list');
+                    modelsList.innerHTML = models.data.slice(0, 10).map(model => 
+                        `<div style="padding: 4px 0; font-size: 0.9rem; color: #666;">${model.id}</div>`
+                    ).join('') + (models.data.length > 10 ? `<div style="padding: 4px 0; font-size: 0.9rem; color: #999; font-style: italic;">... and ${models.data.length - 10} more</div>` : '');
+                }
+                
+                // Update authentication
+                if (token) {
+                    document.getElementById('github-user').textContent = token.github_user || 'Unknown';
+                    document.getElementById('token-status').textContent = token.status || 'Unknown';
+                }
+                
+                loadingEl.style.display = 'none';
+                dashboardEl.style.display = 'grid';
+                
+            } catch (error) {
+                loadingEl.style.display = 'none';
+                errorEl.style.display = 'block';
+                errorEl.innerHTML = `
+                    <strong>Failed to load dashboard data</strong><br>
+                    Error: ${error.message}<br>
+                    Server URL: ${serverUrl}<br>
+                    <small>Make sure the Copilot API server is running and accessible.</small>
+                `;
+            }
+        }
+        
+        // Load data when page loads
+        loadDashboardData();
+        
+        // Auto-refresh every 30 seconds
+        setInterval(loadDashboardData, 30000);
+    </script>
+</body>
+</html>

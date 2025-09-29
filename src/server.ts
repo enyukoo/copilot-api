@@ -1,6 +1,9 @@
 import { Hono } from "hono"
 import { cors } from "hono/cors"
 import { logger } from "hono/logger"
+import { readFile } from "node:fs/promises"
+import { fileURLToPath } from "node:url"
+import { dirname, join } from "node:path"
 
 import { errorBoundary } from "./lib/error.js"
 import { createMetricsHandler, performanceMonitoring } from "./lib/monitoring.js"
@@ -23,6 +26,42 @@ server.use(cors())
 server.use(addRateLimitHeaders())
 
 server.get("/", (c) => c.text("Server running"))
+
+// Dashboard endpoint
+server.get("/dashboard", async (c) => {
+  try {
+    const __filename = fileURLToPath(import.meta.url)
+    const __dirname = dirname(__filename)
+    const dashboardPath = join(__dirname, "..", "pages", "dashboard.html")
+    const dashboardHtml = await readFile(dashboardPath, "utf-8")
+    return c.html(dashboardHtml)
+  } catch (error) {
+    // Fallback if file reading fails
+    return c.html(`
+      <!DOCTYPE html>
+      <html><head><title>Usage Dashboard</title></head>
+      <body style="font-family: Arial, sans-serif; padding: 20px;">
+        <h1>🤖 Copilot API Usage Dashboard</h1>
+        <p><strong>Error:</strong> Dashboard file not found. Using fallback.</p>
+        <div style="margin: 20px 0;">
+          <h3>Quick Links:</h3>
+          <ul>
+            <li><a href="/health">Health Status</a></li>
+            <li><a href="/usage">Usage Information</a></li>
+            <li><a href="/v1/models">Available Models</a></li>
+            <li><a href="/token">Token Status</a></li>
+          </ul>
+        </div>
+        <script>
+          // Auto-redirect to external dashboard if available
+          const serverUrl = window.location.origin;
+          const externalDashboard = 'https://ericc-ch.github.io/copilot-api?endpoint=' + encodeURIComponent(serverUrl);
+          document.body.innerHTML += '<p><a href="' + externalDashboard + '" target="_blank">🌐 Open External Dashboard</a></p>';
+        </script>
+      </body></html>
+    `)
+  }
+})
 
 // Health check endpoints
 server.route("/health", healthRoute)
