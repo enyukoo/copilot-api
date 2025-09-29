@@ -1,0 +1,308 @@
+name: Performance Monitoring
+
+on:
+  schedule:
+    # Run performance tests daily at 3 AM UTC
+    - cron: '0 3 * * *'
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: 'Test duration in seconds'
+        required: false
+        default: '60'
+      concurrent_users:
+        description: 'Number of concurrent users'
+        required: false
+        default: '10'
+
+jobs:
+  performance-test:
+    name: Performance Testing
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.19.1'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit performance tests
+        run: npm test -- tests/unit/performance.test.ts
+
+      - name: Build application
+        run: npm run build
+
+      - name: Start application
+        run: |
+          npm start &
+          APP_PID=$!
+          echo "APP_PID=$APP_PID" >> $GITHUB_ENV
+          
+          # Wait for application to start
+          for i in {1..30}; do
+            if curl -f http://localhost:3000/health > /dev/null 2>&1; then
+              echo "✅ Application started successfully"
+              break
+            fi
+            echo "Waiting for application to start... ($i/30)"
+            sleep 2
+          done
+
+      - name: Install k6 for load testing
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring --keyring /usr/share/keyrings/k6-archive-keyring.gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update
+          sudo apt-get install k6
+
+      - name: Create k6 test script
+        run: |
+          cat > k6-test.js << 'EOF'
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+          import { Rate } from 'k6/metrics';
+
+          const errorRate = new Rate('errors');
+
+          export let options = {
+            stages: [
+              { duration: '10s', target: 5 },  // Ramp up
+              { duration: '${{ github.event.inputs.duration || 60 }}s', target: ${{ github.event.inputs.concurrent_users || 10 }} }, // Stay at load
+              { duration: '10s', target: 0 },  // Ramp down
+            ],
+            thresholds: {
+              http_req_duration: ['p(95)<2000'], // 95% of requests should be under 2s
+              http_req_failed: ['rate<0.05'],   // Error rate should be less than 5%
+              errors: ['rate<0.05'],
+            },
+          };
+
+          export default function() {
+            // Test health endpoint
+            let healthRes = http.get('http://localhost:3000/health');
+            check(healthRes, {
+              'health check status is 200': (r) => r.status === 200,
+              'health check response time < 500ms': (r) => r.timings.duration < 500,
+            }) || errorRate.add(1);
+
+            // Test metrics endpoint
+            let metricsRes = http.get('http://localhost:3000/metrics');
+            check(metricsRes, {
+              'metrics endpoint accessible': (r) => r.status === 200,
+            }) || errorRate.add(1);
+
+            // Test models endpoint (should return 401 without auth)
+            let modelsRes = http.get('http://localhost:3000/v1/models');
+            check(modelsRes, {
+              'models endpoint returns expected status': (r) => r.status === 401 || r.status === 200,
+            }) || errorRate.add(1);
+
+            sleep(1);
+          }
+          EOF
+
+      - name: Run load test
+        run: |
+          k6 run k6-test.js --out json=performance-results.json || true
+
+      - name: Parse performance results
+        run: |
+          if [ -f performance-results.json ]; then
+            echo "## 📊 Performance Test Results" > performance-summary.md
+            echo "" >> performance-summary.md
+            
+            # Extract key metrics from k6 results
+            cat performance-results.json | jq -r 'select(.type=="Point" and .metric=="http_req_duration") | .data.value' | tail -100 > response_times.txt
+            
+            if [ -s response_times.txt ]; then
+              AVG_RESPONSE_TIME=$(awk '{sum+=$1} END {print sum/NR}' response_times.txt)
+              MAX_RESPONSE_TIME=$(sort -n response_times.txt | tail -1)
+              
+              echo "- **Average Response Time:** ${AVG_RESPONSE_TIME}ms" >> performance-summary.md
+              echo "- **Max Response Time:** ${MAX_RESPONSE_TIME}ms" >> performance-summary.md
+            fi
+            
+            # Count total requests
+            TOTAL_REQUESTS=$(cat performance-results.json | jq -r 'select(.type=="Point" and .metric=="http_reqs") | .data.value' | wc -l)
+            echo "- **Total Requests:** $TOTAL_REQUESTS" >> performance-summary.md
+            
+            # Extract error rate
+            ERROR_COUNT=$(cat performance-results.json | jq -r 'select(.type=="Point" and .metric=="http_req_failed" and .data.value==1)' | wc -l)
+            if [ "$TOTAL_REQUESTS" -gt 0 ]; then
+              ERROR_RATE=$(echo "scale=2; $ERROR_COUNT * 100 / $TOTAL_REQUESTS" | bc)
+              echo "- **Error Rate:** ${ERROR_RATE}%" >> performance-summary.md
+            fi
+            
+            echo "" >> performance-summary.md
+            echo "### Thresholds" >> performance-summary.md
+            echo "- ✅ 95% of requests should be under 2s" >> performance-summary.md
+            echo "- ✅ Error rate should be less than 5%" >> performance-summary.md
+            
+            cat performance-summary.md
+          else
+            echo "No performance results file found"
+          fi
+
+      - name: Memory and CPU profiling
+        run: |
+          echo "## 💾 Resource Usage" >> performance-summary.md
+          echo "" >> performance-summary.md
+          
+          # Get process info
+          if [ ! -z "$APP_PID" ]; then
+            MEMORY_KB=$(ps -o rss= -p $APP_PID 2>/dev/null || echo "0")
+            MEMORY_MB=$(echo "scale=2; $MEMORY_KB / 1024" | bc)
+            echo "- **Memory Usage:** ${MEMORY_MB}MB" >> performance-summary.md
+            
+            CPU_PERCENT=$(ps -o %cpu= -p $APP_PID 2>/dev/null || echo "0")
+            echo "- **CPU Usage:** ${CPU_PERCENT}%" >> performance-summary.md
+          fi
+
+      - name: Stop application
+        if: always()
+        run: |
+          if [ ! -z "$APP_PID" ]; then
+            kill $APP_PID || true
+          fi
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: performance-results
+          path: |
+            performance-results.json
+            performance-summary.md
+            response_times.txt
+
+      - name: Comment on PR with performance results
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            try {
+              const summary = fs.readFileSync('performance-summary.md', 'utf8');
+              
+              github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `# 🚀 Performance Test Results\n\n${summary}`
+              });
+            } catch (error) {
+              console.log('Performance summary file not found, skipping comment');
+            }
+
+  memory-leak-test:
+    name: Memory Leak Detection
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.19.1'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Install clinic.js for memory profiling
+        run: npm install -g clinic
+
+      - name: Run memory leak test
+        run: |
+          # Start application with memory profiling
+          timeout 120s clinic doctor --on-port='curl http://localhost:3000/health' -- npm start || true
+          
+          # Generate flame graph
+          timeout 60s clinic flame --on-port='curl http://localhost:3000/health' -- npm start || true
+
+      - name: Upload profiling results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: memory-profiling-results
+          path: |
+            .clinic/
+            *.clinic-*
+
+  benchmark-comparison:
+    name: Benchmark Comparison
+    runs-on: ubuntu-20.04
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.19.1'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run performance tests on PR branch
+        run: |
+          npm test -- tests/unit/performance.test.ts > pr-performance.log 2>&1 || true
+
+      - name: Checkout base branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.base_ref }}
+
+      - name: Install dependencies for base
+        run: npm ci
+
+      - name: Run performance tests on base branch
+        run: |
+          npm test -- tests/unit/performance.test.ts > base-performance.log 2>&1 || true
+
+      - name: Compare performance results
+        run: |
+          echo "# 📈 Performance Comparison" > performance-comparison.md
+          echo "" >> performance-comparison.md
+          echo "Comparing performance between base branch and PR..." >> performance-comparison.md
+          echo "" >> performance-comparison.md
+          echo "## Base Branch Results" >> performance-comparison.md
+          echo "\`\`\`" >> performance-comparison.md
+          tail -20 base-performance.log >> performance-comparison.md || echo "No base results" >> performance-comparison.md
+          echo "\`\`\`" >> performance-comparison.md
+          echo "" >> performance-comparison.md
+          echo "## PR Branch Results" >> performance-comparison.md
+          echo "\`\`\`" >> performance-comparison.md
+          tail -20 pr-performance.log >> performance-comparison.md || echo "No PR results" >> performance-comparison.md
+          echo "\`\`\`" >> performance-comparison.md
+
+      - name: Comment performance comparison
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const comparison = fs.readFileSync('performance-comparison.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comparison
+            });

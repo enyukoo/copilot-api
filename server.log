@@ -1,0 +1,82 @@
+nohup: ignoring input
+ℹ Verbose logging enabled
+⚙ Registered shutdown handler: cleanup-temp
+⚙ Registered shutdown handler: flush-logs
+⚙ Registered shutdown handler: close-db
+⚙ Registered shutdown handler: stop-background-tasks
+ℹ Using VSCode version: 1.104.2
+ℹ Logged in as enyukoo
+⚙ GitHub Copilot Token fetched successfully!
+ℹ Available models: 
+- gpt-4.1
+- gpt-5-mini
+- gpt-5
+- gpt-3.5-turbo
+- gpt-3.5-turbo-0613
+- gpt-4o-mini
+- gpt-4o-mini-2024-07-18
+- gpt-4
+- gpt-4-0613
+- gpt-4-0125-preview
+- gpt-4o
+- gpt-4o-2024-11-20
+- gpt-4o-2024-05-13
+- gpt-4-o-preview
+- gpt-4o-2024-08-06
+- o3-mini
+- o3-mini-2025-01-31
+- o3-mini-paygo
+- gpt-41-copilot
+- grok-code-fast-1
+- gpt-5-codex
+- text-embedding-ada-002
+- text-embedding-3-small
+- text-embedding-3-small-inference
+- claude-3.5-sonnet
+- claude-3.7-sonnet
+- claude-3.7-sonnet-thought
+- claude-sonnet-4
+- gemini-2.0-flash-001
+- gemini-2.5-pro
+- o4-mini
+- o4-mini-2025-04-16
+- gpt-4.1-2025-04-14
+
+ ╭────────────────────────────────────────────────────────────────────────────────────────────────╮
+ │                                                                                                │
+ │  🌐 Usage Viewer: https://ericc-ch.github.io/copilot-api?endpoint=http://localhost:4141/usage  │
+ │                                                                                                │
+ ╰────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+✔ 🚀 Server running on http://localhost:4141
+ℹ Press Ctrl+C to stop the server gracefully
+
+ ERROR  Uncaught exception: listen EADDRINUSE: address already in use :::4141
+
+    at Server.setupListenHandle [as _listen2] (node:net:1811:16)
+    at listenInCluster (node:net:1859:12)
+    at Server.listen (node:net:1947:7)
+    at runServer (dist/start.js:99:39)
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async runCommand (node_modules/citty/dist/index.mjs:316:16)
+    at async runCommand (node_modules/citty/dist/index.mjs:307:11)
+    at async runMain (node_modules/citty/dist/index.mjs:445:7)
+    at async dist/main.js:17:1
+
+ℹ Starting graceful shutdown (signal: UNCAUGHT_EXCEPTION)...
+⚙ Running shutdown handler: cleanup-temp
+⚙ Cleaning up temporary files...
+⚙ Running shutdown handler: flush-logs
+⚙ Flushing logs...
+⚙ Running shutdown handler: close-db
+⚙ Closing database connections...
+⚙ Running shutdown handler: stop-background-tasks
+⚙ Stopping background tasks...
+⚙ Completed shutdown handler: cleanup-temp
+⚙ Completed shutdown handler: flush-logs
+⚙ Completed shutdown handler: close-db
+⚙ Completed shutdown handler: stop-background-tasks
+⚙ Closing server...
+ℹ Closing HTTP server...
+⚙ Server closed
+ℹ Graceful shutdown completed

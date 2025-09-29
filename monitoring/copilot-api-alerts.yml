@@ -1,0 +1,103 @@
+groups:
+  - name: copilot-api-alerts
+    rules:
+      # High Error Rate
+      - alert: CopilotAPIHighErrorRate
+        expr: rate(http_requests_total{job="copilot-api", status=~"5.."}[5m]) / rate(http_requests_total{job="copilot-api"}[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          service: copilot-api
+        annotations:
+          summary: "Copilot API high error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} for the last 5 minutes"
+          
+      # High Response Time
+      - alert: CopilotAPIHighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="copilot-api"}[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: copilot-api
+        annotations:
+          summary: "Copilot API high response time"
+          description: "95th percentile response time is {{ $value }}s"
+          
+      # High Memory Usage
+      - alert: CopilotAPIHighMemoryUsage
+        expr: process_resident_memory_bytes{job="copilot-api"} / (1024 * 1024 * 1024) > 1.5
+        for: 10m
+        labels:
+          severity: warning
+          service: copilot-api
+        annotations:
+          summary: "Copilot API high memory usage"
+          description: "Memory usage is {{ $value | humanize }}GB"
+          
+      # Service Down
+      - alert: CopilotAPIDown
+        expr: up{job="copilot-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: copilot-api
+        annotations:
+          summary: "Copilot API service is down"
+          description: "Copilot API has been down for more than 1 minute"
+          
+      # High Rate Limit Usage
+      - alert: CopilotAPIHighRateLimitUsage
+        expr: rate(rate_limit_exceeded_total{job="copilot-api"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: copilot-api
+        annotations:
+          summary: "Copilot API high rate limit usage"
+          description: "Rate limit exceeded {{ $value }} times per second"
+          
+      # Authentication Failures
+      - alert: CopilotAPIAuthFailures
+        expr: rate(http_requests_total{job="copilot-api", status="401"}[5m]) > 5
+        for: 2m
+        labels:
+          severity: warning
+          service: copilot-api
+        annotations:
+          summary: "Copilot API authentication failures"
+          description: "Authentication failure rate is {{ $value }} per second"
+          
+      # Health Check Failures
+      - alert: CopilotAPIHealthCheckFailed
+        expr: http_requests_total{job="copilot-api", endpoint="/health", status!="200"} > 0
+        for: 1m
+        labels:
+          severity: critical
+          service: copilot-api
+        annotations:
+          summary: "Copilot API health check failing"
+          description: "Health check endpoint returning non-200 status"
+
+  - name: copilot-api-business-alerts
+    rules:
+      # Token Expiration Warning
+      - alert: CopilotAPITokenExpiringSoon
+        expr: (github_token_expires_at - time()) / 3600 < 24
+        for: 0m
+        labels:
+          severity: warning
+          service: copilot-api
+        annotations:
+          summary: "Copilot API token expiring soon"
+          description: "GitHub token expires in {{ $value | humanizeDuration }}"
+          
+      # Quota Usage Warning
+      - alert: CopilotAPIQuotaHigh
+        expr: github_copilot_quota_used / github_copilot_quota_total > 0.8
+        for: 5m
+        labels:
+          severity: warning
+          service: copilot-api
+        annotations:
+          summary: "Copilot API quota usage high"
+          description: "Quota usage is {{ $value | humanizePercentage }}"

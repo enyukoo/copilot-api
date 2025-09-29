@@ -1,0 +1,276 @@
+name: Security Audit
+
+on:
+  schedule:
+    # Run security audit daily at 2 AM UTC
+    - cron: '0 2 * * *'
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-20.04
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          config-file: '.github/dependency-review-config.yml'
+
+  security-audit:
+    name: Security Audit
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.19.1'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: |
+          npm audit --audit-level moderate --json > audit-results.json || true
+          
+          # Check if there are any high or critical vulnerabilities
+          HIGH_CRITICAL=$(jq '.metadata.vulnerabilities.high + .metadata.vulnerabilities.critical' audit-results.json)
+          
+          if [ "$HIGH_CRITICAL" -gt 0 ]; then
+            echo "❌ Found $HIGH_CRITICAL high/critical vulnerabilities"
+            npm audit --audit-level moderate
+            exit 1
+          else
+            echo "✅ No high/critical vulnerabilities found"
+          fi
+
+      - name: Upload audit results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: npm-audit-results
+          path: audit-results.json
+
+      - name: Check for security patches
+        run: |
+          # Check if security patches are available
+          npm outdated --json > outdated.json || true
+          
+          # Parse outdated packages for security issues
+          if [ -s outdated.json ]; then
+            echo "📦 Outdated packages found - reviewing for security implications"
+            cat outdated.json
+          fi
+
+  secret-scanning:
+    name: Secret Scanning
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run TruffleHog
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+          extra_args: --debug --only-verified
+
+  code-security:
+    name: Code Security Analysis
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+          queries: security-extended
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+
+      - name: Run ESLint Security Plugin
+        run: |
+          npm ci
+          npx eslint . --ext .js,.ts --format json --output-file eslint-security.json || true
+
+      - name: Upload ESLint results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eslint-security-results
+          path: eslint-security.json
+
+  docker-security:
+    name: Docker Security Scan
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t copilot-api:security-test .
+
+      - name: Run Trivy security scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'copilot-api:security-test'
+          format: 'sarif'
+          output: 'trivy-docker-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-docker-results.sarif'
+
+      - name: Check for high severity vulnerabilities
+        run: |
+          # Extract high and critical vulnerabilities
+          docker run --rm -v "$PWD":/app -w /app \
+            aquasec/trivy:latest image --severity HIGH,CRITICAL --exit-code 1 \
+            copilot-api:security-test
+
+  security-test:
+    name: Security Tests
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.19.1'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security tests
+        run: npm test -- tests/unit/security.test.ts
+
+      - name: OWASP ZAP Baseline Scan
+        if: github.ref == 'refs/heads/main'
+        run: |
+          # Start the application
+          npm run build
+          timeout 30s npm start &
+          APP_PID=$!
+          
+          # Wait for app to start
+          sleep 10
+          
+          # Run OWASP ZAP baseline scan
+          docker run --rm --network host \
+            -v $PWD/zap-reports:/zap/wrk/:rw \
+            owasp/zap2docker-stable:latest \
+            zap-baseline.py -t http://localhost:3000 \
+            -J zap-report.json -r zap-report.html || true
+          
+          # Stop the application
+          kill $APP_PID || true
+
+      - name: Upload OWASP ZAP results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: owasp-zap-results
+          path: zap-reports/
+
+  security-summary:
+    name: Security Summary
+    runs-on: ubuntu-20.04
+    needs: [security-audit, secret-scanning, code-security, docker-security, security-test]
+    if: always()
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Generate security summary
+        run: |
+          echo "# 🔒 Security Audit Summary" > security-summary.md
+          echo "" >> security-summary.md
+          echo "**Date:** $(date)" >> security-summary.md
+          echo "**Commit:** ${{ github.sha }}" >> security-summary.md
+          echo "" >> security-summary.md
+          
+          # Check each job status
+          echo "## 📊 Scan Results" >> security-summary.md
+          echo "" >> security-summary.md
+          
+          if [ "${{ needs.security-audit.result }}" = "success" ]; then
+            echo "- ✅ Dependency audit: PASSED" >> security-summary.md
+          else
+            echo "- ❌ Dependency audit: FAILED" >> security-summary.md
+          fi
+          
+          if [ "${{ needs.secret-scanning.result }}" = "success" ]; then
+            echo "- ✅ Secret scanning: PASSED" >> security-summary.md
+          else
+            echo "- ❌ Secret scanning: FAILED" >> security-summary.md
+          fi
+          
+          if [ "${{ needs.code-security.result }}" = "success" ]; then
+            echo "- ✅ Code security analysis: PASSED" >> security-summary.md
+          else
+            echo "- ❌ Code security analysis: FAILED" >> security-summary.md
+          fi
+          
+          if [ "${{ needs.docker-security.result }}" = "success" ]; then
+            echo "- ✅ Docker security scan: PASSED" >> security-summary.md
+          else
+            echo "- ❌ Docker security scan: FAILED" >> security-summary.md
+          fi
+          
+          if [ "${{ needs.security-test.result }}" = "success" ]; then
+            echo "- ✅ Security tests: PASSED" >> security-summary.md
+          else
+            echo "- ❌ Security tests: FAILED" >> security-summary.md
+          fi
+          
+          echo "" >> security-summary.md
+          echo "## 📋 Recommendations" >> security-summary.md
+          echo "" >> security-summary.md
+          echo "- Review any failed scans and address identified vulnerabilities" >> security-summary.md
+          echo "- Update dependencies regularly to get security patches" >> security-summary.md
+          echo "- Monitor security advisories for used packages" >> security-summary.md
+          echo "- Run security scans before each release" >> security-summary.md
+          
+          cat security-summary.md
+
+      - name: Upload security summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-summary
+          path: security-summary.md
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const summary = fs.readFileSync('security-summary.md', 'utf8');
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: summary
+            });

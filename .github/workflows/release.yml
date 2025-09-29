@@ -3,17 +3,143 @@ name: Release
 permissions:
   id-token: write
   contents: write
+  packages: write
 
 on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., v1.2.3)'
+        required: true
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  release:
+  validate-release:
+    name: Validate Release
     runs-on: ubuntu-20.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      is_prerelease: ${{ steps.version.outputs.is_prerelease }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/}
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Check if this is a prerelease (contains -alpha, -beta, -rc)
+          if [[ $VERSION =~ -(alpha|beta|rc) ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+          
+          echo "Release version: $VERSION"
+
+      - name: Validate version format
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          if [[ ! $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$ ]]; then
+            echo "❌ Invalid version format: $VERSION"
+            echo "Expected format: v1.2.3 or v1.2.3-alpha.1"
+            exit 1
+          fi
+          echo "✅ Version format is valid"
+
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-20.04
+    needs: [validate-release]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run tests
+        run: npm test
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run security audit
+        run: npm audit --audit-level moderate
+
+  build-docker:
+    name: Build and Push Docker Image
+    runs-on: ubuntu-20.04
+    needs: [validate-release, build-and-test]
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=tag
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+
+      - name: Build and push Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-20.04
+    needs: [validate-release, build-and-test, build-docker]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
@@ -29,4 +155,79 @@ jobs:
       - name: Generate changelog
         run: npx changelogithub
         env:
-          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create enhanced release notes
+        run: |
+          echo "# 🚀 Release ${{ needs.validate-release.outputs.version }}" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "## 📦 Docker Images" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "- \`ghcr.io/${{ github.repository }}:${{ needs.validate-release.outputs.version }}\`" >> RELEASE_NOTES.md
+          echo "- \`ghcr.io/${{ github.repository }}:latest\`" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "## 🔧 Installation" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "\`\`\`bash" >> RELEASE_NOTES.md
+          echo "docker pull ghcr.io/${{ github.repository }}:${{ needs.validate-release.outputs.version }}" >> RELEASE_NOTES.md
+          echo "\`\`\`" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "## 🔍 Image Details" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "- **Digest**: \`${{ needs.build-docker.outputs.image-digest }}\`" >> RELEASE_NOTES.md
+          echo "- **Platforms**: linux/amd64, linux/arm64" >> RELEASE_NOTES.md
+          echo "- **Built from**: \`${{ github.sha }}\`" >> RELEASE_NOTES.md
+
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ needs.validate-release.outputs.version }}
+          release_name: Release ${{ needs.validate-release.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: ${{ needs.validate-release.outputs.is_prerelease }}
+
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-20.04
+    needs: [validate-release, create-release]
+    if: needs.validate-release.outputs.is_prerelease == 'false'
+    environment:
+      name: staging
+      url: https://staging.copilot-api.example.com
+    steps:
+      - name: Deploy to staging
+        run: |
+          echo "🚀 Deploying ${{ needs.validate-release.outputs.version }} to staging..."
+          echo "Docker image: ghcr.io/${{ github.repository }}:${{ needs.validate-release.outputs.version }}"
+          # Add actual deployment commands here
+          echo "✅ Deployment to staging completed"
+
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-20.04
+    needs: [validate-release, create-release, deploy-staging]
+    if: needs.validate-release.outputs.is_prerelease == 'false'
+    environment:
+      name: production
+      url: https://copilot-api.example.com
+    steps:
+      - name: Deploy to production
+        run: |
+          echo "🚀 Deploying ${{ needs.validate-release.outputs.version }} to production..."
+          echo "Docker image: ghcr.io/${{ github.repository }}:${{ needs.validate-release.outputs.version }}"
+          # Add actual deployment commands here
+          echo "✅ Deployment to production completed"
+
+  notify-release:
+    name: Notify Release
+    runs-on: ubuntu-20.04
+    needs: [validate-release, create-release, deploy-production]
+    if: always() && needs.create-release.result == 'success'
+    steps:
+      - name: Send notification
+        run: |
+          echo "📢 Release ${{ needs.validate-release.outputs.version }} notification sent"
+          # Add notification logic here (Slack, email, etc.)

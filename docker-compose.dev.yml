@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  copilot-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - GH_TOKEN=${GITHUB_TOKEN:-}
+    ports:
+      - "4141:4141"
+    environment:
+      - NODE_ENV=development
+      - PORT=4141
+      - HOST=0.0.0.0
+      - LOG_LEVEL=debug
+      - LOG_FORMAT=text
+      - MANUAL_APPROVE=false
+      - SHOW_TOKEN=true
+      - ENABLE_METRICS=true
+      - ENABLE_HEALTH_CHECKS=true
+      - ENABLE_VALIDATION=true
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:4141/health", "||", "exit", "1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    volumes:
+      # Optional: Mount token storage directory for persistence
+      - ./data:/root/.copilot-api:rw
+    networks:
+      - copilot-net
+
+networks:
+  copilot-net:
+    driver: bridge
+
+volumes:
+  copilot-data:
+    driver: local

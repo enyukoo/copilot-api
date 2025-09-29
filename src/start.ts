@@ -3,9 +3,25 @@
 import { defineCommand } from "citty"
 import clipboard from "clipboardy"
 import consola from "consola"
-import { serve, type ServerHandler } from "srvx"
+import { createServer, type IncomingMessage } from "node:http"
 import invariant from "tiny-invariant"
 
+// Helper function to get request body from Node.js request
+async function getRequestBody(req: IncomingMessage): Promise<string> {
+  return new Promise((resolve, reject) => {
+    let body = ''
+    req.on('data', (chunk) => {
+      body += chunk.toString()
+    })
+    req.on('end', () => {
+      resolve(body)
+    })
+    req.on('error', reject)
+  })
+}
+
+import { configManager } from "./lib/config.js"
+import { gracefulShutdown, setupDefaultShutdownHandlers } from "./lib/graceful-shutdown.js"
 import { ensurePaths } from "./lib/paths.js"
 import { generateEnvScript } from "./lib/shell.js"
 import { state } from "./lib/state.js"
@@ -25,12 +41,18 @@ interface RunServerOptions {
   showToken: boolean
 }
 
-export async function runServer(options: RunServerOptions): Promise<void> {
-  if (options.verbose) {
+export async function runServer(options: RunServerOptions): Promise<any> {
+  // Configure logging based on environment and options
+  const loggingConfig = configManager.getLoggingConfig()
+  if (options.verbose || loggingConfig.level === "debug") {
     consola.level = 5
     consola.info("Verbose logging enabled")
   }
 
+  // Setup graceful shutdown handlers
+  setupDefaultShutdownHandlers()
+
+  // Apply configuration to global state
   state.accountType = options.accountType
   if (options.accountType !== "individual") {
     consola.info(`Using ${options.accountType} plan GitHub account`)
@@ -104,10 +126,42 @@ export async function runServer(options: RunServerOptions): Promise<void> {
     `🌐 Usage Viewer: https://ericc-ch.github.io/copilot-api?endpoint=${serverUrl}/usage`,
   )
 
-  serve({
-    fetch: server.fetch as ServerHandler,
-    port: options.port,
+  // Start server with graceful shutdown support
+  const httpServer = createServer(async (req, res) => {
+    const response = await server.fetch(new Request(`http://localhost:${options.port}${req.url}`, {
+      method: req.method,
+      headers: req.headers as Record<string, string>,
+      body: req.method !== 'GET' && req.method !== 'HEAD' ? await getRequestBody(req) : undefined,
+    }))
+    
+    res.statusCode = response.status
+    response.headers.forEach((value, key) => {
+      res.setHeader(key, value)
+    })
+    
+    const body = await response.text()
+    res.end(body)
   })
+
+  const serverInstance = httpServer.listen(options.port, () => {
+    consola.success(`🚀 Server running on ${serverUrl}`)
+    consola.info("Press Ctrl+C to stop the server gracefully")
+  })
+
+  // Register server for graceful shutdown
+  gracefulShutdown.registerServer({
+    close: async () => {
+      consola.info("Closing HTTP server...")
+      return new Promise<void>((resolve) => {
+        serverInstance.close(() => resolve())
+      })
+    }
+  })
+
+  consola.success(`🚀 Server running on ${serverUrl}`)
+  consola.info("Press Ctrl+C to stop the server gracefully")
+
+  return serverInstance
 }
 
 export const start = defineCommand({

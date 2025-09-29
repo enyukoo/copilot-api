@@ -1,0 +1,33 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - "copilot-api-alerts.yml"
+
+scrape_configs:
+  - job_name: 'copilot-api'
+    static_configs:
+      - targets: ['copilot-api:3000']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    scrape_timeout: 5s
+    honor_labels: true
+    
+  - job_name: 'copilot-api-health'
+    static_configs:
+      - targets: ['copilot-api:3000']
+    metrics_path: '/health/detailed'
+    scrape_interval: 30s
+    scrape_timeout: 10s
+    metric_relabel_configs:
+      - source_labels: [__name__]
+        regex: 'up'
+        target_label: 'service'
+        replacement: 'copilot-api'
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          - alertmanager:9093
